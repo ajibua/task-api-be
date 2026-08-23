@@ -2,13 +2,49 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
+from sqlmodel import SQLModel, Field, Session, create_engine, select
 
 app = FastAPI(
     title="Task API",
     version="1.0",
-    description="A small in-memory to-do list API supporting full CRUD on tasks.",
+    description="A small to-do list API, backed by SQLite, supporting full CRUD on tasks.",
 )
 
+
+# --- Database setup -------------------------------------------------------
+
+DATABASE_FILE = "tasks.db"
+engine = create_engine(f"sqlite:///{DATABASE_FILE}")
+
+
+class Task(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    done: bool = False
+
+
+def init_db():
+    """Creates tasks.db and the tasks table if they don't already exist,
+    then seeds three example tasks -- but only the first time, when the
+    table is empty."""
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        existing = session.exec(select(Task)).first()
+        if existing is None:
+            session.add_all([
+                Task(title="Buy milk", done=False),
+                Task(title="Walk the dog", done=False),
+                Task(title="Read a book", done=True),
+            ])
+            session.commit()
+
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+
+
+# --- Request/response models ----------------------------------------------
 
 class TaskCreate(BaseModel):
     title: str = ""
