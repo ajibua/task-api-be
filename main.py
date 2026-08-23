@@ -18,6 +18,8 @@ engine = create_engine(f"sqlite:///{DATABASE_FILE}")
 
 
 class Task(SQLModel, table=True):
+    __tablename__ = "tasks"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     done: bool = False
