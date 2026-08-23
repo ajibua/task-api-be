@@ -96,14 +96,15 @@ def get_task(task_id: int):
 @app.post("/tasks", status_code=201, summary="Create a new task")
 def create_task(task: TaskCreate):
     """Creates a new task from a JSON body with a title. Fails with 400 if title is missing/empty."""
-    global next_id
     if not task.title or not task.title.strip():
         raise HTTPException(status_code=400, detail="title is required and cannot be empty")
 
-    new_task = {"id": next_id, "title": task.title.strip(), "done": False}
-    tasks.append(new_task)
-    next_id += 1
-    return new_task
+    with Session(engine) as session:
+        new_task = Task(title=task.title.strip(), done=False)
+        session.add(new_task)
+        session.commit()
+        session.refresh(new_task)
+        return new_task
 
 
 @app.put("/tasks/{task_id}", summary="Update a task")
