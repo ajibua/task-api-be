@@ -60,14 +60,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     # Spec wants {"error": "..."} instead of FastAPI's default {"detail": "..."}
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
-tasks = [
-    {"id": 1, "title": "Buy milk", "done": False},
-    {"id": 2, "title": "Walk the dog", "done": False},
-    {"id": 3, "title": "Read a book", "done": True},
-]
-next_id = 4
-
-
 @app.get("/", summary="API info")
 def root():
     """Describes this API: its name, version, and available endpoints."""
@@ -86,17 +78,19 @@ def health():
 
 @app.get("/tasks", summary="List all tasks")
 def list_tasks():
-    """Returns every task currently stored in memory."""
-    return tasks
+    """Returns every task currently stored in the database."""
+    with Session(engine) as session:
+        return session.exec(select(Task)).all()
 
 
 @app.get("/tasks/{task_id}", summary="Get a single task")
 def get_task(task_id: int):
     """Returns a single task by id, or 404 if it doesn't exist."""
-    for task in tasks:
-        if task["id"] == task_id:
-            return task
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    with Session(engine) as session:
+        task = session.get(Task, task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return task
 
 
 @app.post("/tasks", status_code=201, summary="Create a new task")
