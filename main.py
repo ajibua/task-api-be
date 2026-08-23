@@ -110,23 +110,29 @@ def create_task(task: TaskCreate):
 @app.put("/tasks/{task_id}", summary="Update a task")
 def update_task(task_id: int, update: TaskUpdate):
     """Updates a task's title and/or done status. 404 if unknown id, 400 if title is emptied out."""
-    for task in tasks:
-        if task["id"] == task_id:
-            if update.title is not None:
-                if not update.title.strip():
-                    raise HTTPException(status_code=400, detail="title cannot be empty")
-                task["title"] = update.title.strip()
-            if update.done is not None:
-                task["done"] = update.done
-            return task
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    with Session(engine) as session:
+        task = session.get(Task, task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        if update.title is not None:
+            if not update.title.strip():
+                raise HTTPException(status_code=400, detail="title cannot be empty")
+            task.title = update.title.strip()
+        if update.done is not None:
+            task.done = update.done
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+        return task
 
 
 @app.delete("/tasks/{task_id}", status_code=204, summary="Delete a task")
 def delete_task(task_id: int):
     """Deletes a task by id. Returns 204 with no body on success, 404 if unknown id."""
-    for i, task in enumerate(tasks):
-        if task["id"] == task_id:
-            tasks.pop(i)
-            return
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    with Session(engine) as session:
+        task = session.get(Task, task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        session.delete(task)
+        session.commit()
+        return
