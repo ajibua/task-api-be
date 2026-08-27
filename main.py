@@ -15,7 +15,6 @@ app = FastAPI(
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # Spec wants {"error": "..."} instead of FastAPI's default {"detail": "..."}
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
 
@@ -30,9 +29,9 @@ def init_db():
         existing = session.exec(select(Task)).first()
         if existing is None:
             session.add_all([
-                Task(title="Buy milk", done=False),
-                Task(title="Walk the dog", done=False),
-                Task(title="Read a book", done=True),
+                Task(title="complete BE tasks on flyrank", done=False),
+                Task(title="pick up my learning on system design", done=False),
+                Task(title="strengthen my DS", done=True),
             ])
             session.commit()
 

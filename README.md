@@ -24,9 +24,9 @@ and seed three example tasks (only because the volume is empty the first
 time), waits for Postgres to report healthy, then starts the app.
 
 Then visit:
-- `http://localhost:8000/` — API info
-- `http://localhost:8000/docs` — interactive Swagger UI
-- `http://localhost:8000/health` — health check
+- `http://127.0.0.1:8000/` — API info
+- `http://127.0.0.1:8000/docs` — interactive Swagger UI
+- `http://127.0.0.1:8000/health` — health check
 
 To stop everything: `docker compose down` (add `-v` if you want to wipe the
 volume and start completely fresh next time).
@@ -44,7 +44,7 @@ DATABASE_URL=postgresql://taskapi:taskapi@localhost:5432/taskapi
 Then:
 ```bash
 pip install -r requirements.txt
-psql -f init.sql   # create the table once, against your local Postgres
+psql -f init.sql  
 uvicorn main:app --reload --port 8000
 ```
 
