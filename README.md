@@ -132,10 +132,10 @@ credentials would live in a less toy-ish project. `.env.example` is
 committed instead, showing the shape `.env` needs without real secrets:
 
 ```
-DATABASE_URL=postgresql://taskapi:taskapi@db:5432/taskapi
-POSTGRES_USER=taskapi
-POSTGRES_PASSWORD=taskapi
-POSTGRES_DB=taskapi
+DATABASE_URL=database-url
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
+POSTGRES_DB=db
 ```
 
 Copy it to get started: `cp .env.example .env`
