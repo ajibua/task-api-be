@@ -121,10 +121,6 @@ volume (`pgdata` in `docker-compose.yml`) is what makes this work: Postgres
 writes its data files there, and Docker keeps that volume around
 independently of the container's lifecycle.
 
-*(Screenshot: paste a screenshot here of `docker compose up`, a `curl`
-creating a task, `docker compose down && docker compose up` again, and
-`GET /tasks` still showing it.)*
-
 ## Environment variables
 
 `.env` is git-ignored — it's never committed, since it's where real
