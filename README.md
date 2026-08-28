@@ -147,3 +147,104 @@ docker-compose.yml  # app + Postgres, wired together, with a persistent volume
 .env.example         # committed template for .env
 requirements.txt    # fastapi, uvicorn, sqlmodel, psycopg2-binary, python-dotenv, ...
 ```
+## Auth
+
+Built for W2 · A4 — Auth · Login & protect. Adds real user accounts on
+top of the existing task API, using **Supabase Auth** as the identity
+provider: it stores accounts, hashes passwords, and signs JSON Web
+Tokens. This app never touches a password directly — it only forwards
+credentials to Supabase and verifies the tokens Supabase hands back.
+
+### Setup
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In **Project Settings → API**, copy your **Project URL** and **anon
+   key** (never the `service_role` key — that one bypasses all
+   security and must stay server-side-secret, and this project doesn't
+   need it at all).
+3. In **Authentication → Sign In / Providers → Email**, turn off
+   **"Confirm email"** so a fresh signup can log in immediately (a
+   practice-project convenience — leave this on in production).
+4. Add to `.env` (see `.env.example`):
+   ```
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_KEY=your_supabase_anon_key
+   ```
+5. `pip install -r requirements.txt` (now includes `supabase`).
+
+### Endpoints
+
+| Method | Path                 | Description                  | Auth required               | Success | Errors   |
+| ------ | -------------------- | ----------------------------- | ---------------------------- | ------- | -------- |
+| POST   | `/auth/signup`       | Create a new user account     | none                          | 201     | 400      |
+| POST   | `/auth/login`        | Authenticate & return a JWT   | none                          | 200     | 400, 401 |
+| POST   | `/auth/logout`       | End the user's session        | `Authorization: Bearer <token>` | 204     | 401      |
+| GET    | `/protected/profile` | Read the caller's own profile | `Authorization: Bearer <token>` | 200     | 401      |
+| GET    | `/protected/dashboard` | Second example protected route, same guard | `Authorization: Bearer <token>` | 200 | 401 |
+| GET    | `/public/info`       | Public, unprotected data      | none                          | 200     | —        |
+
+All errors are returned as `{"error": "message"}`, matching the
+existing error shape from the tasks endpoints.
+
+### How verification works
+
+`app/dependencies.py` defines a single reusable guard,
+`get_current_user`, applied via FastAPI's `Depends()` to every
+protected route (`/protected/*` and `/auth/logout`):
+
+1. Extracts the bearer token from the `Authorization` header.
+2. Missing or malformed header → `401 {"error": "Access token required"}`.
+3. Otherwise calls `supabase.auth.get_user(token)` — a real network
+   call to Supabase, so an expired or tampered token is caught even
+   though the token itself is never decoded locally.
+4. Invalid/expired token → `401 {"error": "Invalid or expired token"}`.
+5. Valid token → the route runs with the verified user attached.
+
+Using FastAPI's `HTTPBearer` security scheme (rather than reading the
+header manually) is what makes the padlock icon and "Authorize" button
+appear automatically on `/docs` for every route that depends on it —
+no manual `securitySchemes` config needed in the Python lane.
+
+### Try it — curl
+
+```bash
+# Sign up
+curl -i -X POST http://localhost:8000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+# -> 201
+
+# Log in
+curl -i -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+curl -i http://localhost:8000/public/info
+
+curl -i http://localhost:8000/protected/profile
+
+curl -i http://localhost:8000/protected/profile \
+  -H "Authorization: Bearer <PASTE_ACCESS_TOKEN_HERE>"
+# -> 200, your user details
+
+curl -i -X POST http://localhost:8000/auth/logout \
+  -H "Authorization: Bearer <PASTE_ACCESS_TOKEN_HERE>"
+# -> 204
+```
+
+### Try it — Swagger UI
+
+Visit `http://localhost:8000/docs`, click **Authorize**, paste an
+`access_token` from `/auth/login`, then **Try it out** on
+`GET /protected/profile` — no curl needed. Protected routes show a
+lock icon; `/public/info` does not.
+
+![Swagger UI showing auth, protected, and public routes](sql-db/swagger_ui.png)
+### 401 vs 403
+
+This assignment only implements `401` (**"I don't know who you
+are"** — no token, or a token Supabase rejects). `403` (**"I know
+exactly who you are, and you still may not"**) is a stretch goal: it
+would mean adding a role check *after* `get_current_user` succeeds —
+e.g. an `/admin/*` route that checks `current_user`'s role/metadata
+and returns `403` for anyone who isn't an admin.
