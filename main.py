@@ -5,11 +5,16 @@ from sqlmodel import Session, SQLModel, select
 from app.database import engine
 from app.models import Task
 from app.routes import router
+from app.auth_routes import router as auth_router
+from app.protected_routes import router as protected_router
+from app.public_routes import router as public_router
 
 app = FastAPI(
     title="Task API",
     version="1.0",
-    description="A small to-do list API, backed by Postgres (or SQLite locally), supporting full CRUD on tasks.",
+    description="A small to-do list API, backed by Postgres (or SQLite locally), "
+        "supporting full CRUD on tasks -- plus Supabase-backed auth: "
+        "sign up, log in, log out, and token-protected routes.",
 )
 
 
@@ -40,5 +45,7 @@ def init_db():
 def on_startup():
     init_db()
 
-
 app.include_router(router)
+app.include_router(auth_router)
+app.include_router(protected_router)
+app.include_router(public_router)
